@@ -124,6 +124,13 @@
     text-align: center;
     margin-bottom: 0.6rem;
   }
+
+  .limit-warning {
+    text-align: center;
+    font-size: 0.9rem;
+    color: var(--highlight);
+    margin-bottom: 0.4rem;
+  }
 </style>
 </head>
 
@@ -183,6 +190,7 @@
     <div class="turn-banner" id="turnBanner">PLAYER TURN</div>
 
     <div class="random-instruction hidden" id="randomInstruction"></div>
+    <div class="limit-warning hidden" id="limitWarning">Only first 3 darts count — press End Turn</div>
 
     <div class="dartboard-wrapper">
       <svg class="dartboard" viewBox="0 0 200 200" id="dartboardSvg">
@@ -232,6 +240,7 @@ const turnTotalText = document.getElementById("turnTotalText");
 const scoreboard = document.getElementById("scoreboard");
 const randomInstruction = document.getElementById("randomInstruction");
 const ringsGroup = document.getElementById("ringsGroup");
+const limitWarning = document.getElementById("limitWarning");
 
 document.getElementById("playerCount").addEventListener("change", renderNameInputs);
 
@@ -318,7 +327,7 @@ function createDartboard() {
   ringsGroup.innerHTML = "";
 
   numbers.forEach((num, i) => {
-    const a1 = -Math.PI/2 + i*step;
+    const a1 = (i * step) - Math.PI/2;
     const a2 = a1 + step;
 
     const single = document.createElementNS("http://www.w3.org/2000/svg","path");
@@ -410,6 +419,14 @@ function hitSegment(el) {
   if (type==="double") value = num*2;
   if (type==="treble") value = num*3;
 
+  if (state.mode==="standard") {
+    if (state.lastDarts.length >= 3) {
+      limitWarning.classList.remove("hidden");
+      haptic();
+      return;
+    }
+  }
+
   if (state.mode==="random") {
     const t = state.randomTarget;
     const required =
@@ -430,44 +447,19 @@ function hitSegment(el) {
   state.turnTotal += value;
   state.lastDarts.push(value);
   turnTotalText.textContent = `Turn Total: ${state.turnTotal}`;
+  limitWarning.classList.add("hidden");
   haptic();
 }
 
 function hitBull(score,type) {
-  if (state.mode==="random") {
-    const t = state.randomTarget;
-    const required = t.mult==="bull"?50:25;
-    if (score !== required) {
+  if (state.mode==="standard") {
+    if (state.lastDarts.length >= 3) {
+      limitWarning.classList.remove("hidden");
       haptic();
       return;
     }
-
-    state.players[state.currentPlayer].completed.push(type);
-    checkWinner();
-    generateRandomTarget();
   }
 
-  state.turnTotal += score;
-  state.lastDarts.push(score);
-  turnTotalText.textContent = `Turn Total: ${state.turnTotal}`;
-  haptic();
-}
-
-function checkWinner() {
-  const p = state.players[state.currentPlayer];
-  if (p.completed.length >= 22) {
-    alert(`${p.name} wins!`);
-  }
-}
-
-document.getElementById("undoBtn").addEventListener("click", () => {
-  if (state.lastDarts.length === 0) return;
-  const last = state.lastDarts.pop();
-  state.turnTotal -= last;
-  turnTotalText.textContent = `Turn Total: ${state.turnTotal}`;
-  haptic();
-});
-
-document.getElementById("endTurnBtn").addEventListener("click", () => {
-  const p = state.players[state.currentPlayer];
-  p
+  if (state.mode==="random") {
+    const t = state.randomTarget;
+    const required = t.mult==="bull"?50:25;
