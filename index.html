@@ -4,14 +4,9 @@
   <meta charset="UTF-8">
   <title>Darts Tracker</title>
 
-  <!-- iPhone / mobile viewport -->
   <meta name="viewport"
         content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
-
-  <!-- PWA manifest -->
   <link rel="manifest" href="manifest.json">
-
-  <!-- Basic theme colors -->
   <meta name="theme-color" content="#000000">
 
   <style>
@@ -163,56 +158,13 @@
       cursor: not-allowed;
     }
 
-    .players {
-      display: flex;
-      flex-direction: column;
-      gap: 0.8rem;
-    }
-
-    .player-card {
-      border-radius: 12px;
-      border: 1px solid #444;
-      padding: 0.7rem 0.8rem;
-      background: #2c2c2e;
-    }
-
-    body.light .player-card {
-      background: #fafafa;
-      border-color: #ddd;
-    }
-
-    .player-card h3 {
-      margin: 0 0 0.3rem 0;
-      font-size: 1rem;
-    }
-
-    .score-inputs {
-      display: flex;
-      gap: 0.4rem;
-      margin-top: 0.4rem;
-    }
-
-    .score-inputs input {
-      width: 30%;
-    }
-
     .small-text {
       font-size: 0.8rem;
       opacity: 0.8;
     }
 
-    .checkout {
-      margin-top: 0.3rem;
-      font-size: 0.8rem;
-    }
-
     .hidden {
       display: none;
-    }
-
-    .random-shot {
-      margin-top: 0.6rem;
-      font-size: 0.9rem;
     }
 
     .footer-note {
@@ -237,6 +189,108 @@
       background: var(--accent2);
       transition: width 0.3s ease;
     }
+
+    .player-list {
+      display: flex;
+      flex-direction: column;
+      gap: 0.4rem;
+    }
+
+    .player-name-input {
+      display: flex;
+      gap: 0.4rem;
+      align-items: center;
+    }
+
+    .player-name-input span {
+      font-size: 0.85rem;
+      width: 70px;
+    }
+
+    .turn-info {
+      font-size: 0.9rem;
+      margin-bottom: 0.4rem;
+    }
+
+    .turn-total {
+      font-size: 0.9rem;
+      margin-top: 0.4rem;
+    }
+
+    .multiplier-buttons {
+      display: flex;
+      justify-content: center;
+      gap: 0.4rem;
+      margin-bottom: 0.6rem;
+    }
+
+    .multiplier-buttons button {
+      flex: 1;
+    }
+
+    .multiplier-active {
+      box-shadow: 0 0 0 2px var(--accent2);
+    }
+
+    .dartboard-wrapper {
+      display: flex;
+      justify-content: center;
+      margin-bottom: 0.6rem;
+    }
+
+    svg.dartboard {
+      width: 280px;
+      height: 280px;
+      max-width: 100%;
+    }
+
+    .segment {
+      cursor: pointer;
+      fill: #222;
+      stroke: #444;
+      stroke-width: 1;
+    }
+
+    .segment-label {
+      fill: #fff;
+      font-size: 10px;
+      text-anchor: middle;
+      dominant-baseline: middle;
+      pointer-events: none;
+    }
+
+    .segment-highlight {
+      fill: #444;
+    }
+
+    .bull {
+      cursor: pointer;
+    }
+
+    .bull-inner {
+      fill: #ff3b30;
+    }
+
+    .bull-outer {
+      fill: #ffaa00;
+    }
+
+    .bull-label {
+      fill: #fff;
+      font-size: 10px;
+      text-anchor: middle;
+      dominant-baseline: middle;
+      pointer-events: none;
+    }
+
+    .scoreboard {
+      margin-top: 0.6rem;
+    }
+
+    .scoreboard-item {
+      font-size: 0.85rem;
+      margin-bottom: 0.2rem;
+    }
   </style>
 </head>
 <body class="dark">
@@ -250,7 +304,7 @@
       <div class="progress-fill" id="progressFill"></div>
     </div>
 
-    <!-- Setup / Home Screen -->
+    <!-- Setup Screen -->
     <section class="card" id="setupCard">
       <h2>Game Setup</h2>
 
@@ -293,7 +347,7 @@
         <div id="randomOptions" class="hidden">
           <label>Random Shot Selector</label>
           <p class="small-text">
-            Each turn, a random target (1–20, bull, doubles, triples) is generated.
+            Each turn, a random target (number + multiplier) is generated.
           </p>
         </div>
       </div>
@@ -312,6 +366,12 @@
         </div>
       </div>
 
+      <div class="card">
+        <h3>Player Names</h3>
+        <div class="player-list" id="playerNamesContainer"></div>
+        <button class="secondary" id="generateNamesBtn">Update Names</button>
+      </div>
+
       <button class="primary" id="startGameBtn">Start Game</button>
     </section>
 
@@ -320,21 +380,52 @@
       <h2>Game In Progress</h2>
       <p class="small-text" id="gameSummary"></p>
 
+      <p class="turn-info" id="turnInfo"></p>
+
+      <div class="multiplier-buttons">
+        <button class="secondary multiplier-active" data-multiplier="single">Single</button>
+        <button class="secondary" data-multiplier="double">Double</button>
+        <button class="secondary" data-multiplier="treble">Treble</button>
+      </div>
+
+      <div class="dartboard-wrapper">
+        <!-- Clean SVG dartboard: numbers around, bull in centre -->
+        <svg class="dartboard" viewBox="0 0 200 200">
+          <!-- Outer board -->
+          <circle cx="100" cy="100" r="95" fill="#111" stroke="#666" stroke-width="2"></circle>
+
+          <!-- Number ring segments (simplified wedges) -->
+          <!-- We'll place 20 numbers around the circle with invisible hit areas -->
+          <g id="segmentsGroup"></g>
+
+          <!-- Outer bull -->
+          <circle class="bull bull-outer" cx="100" cy="100" r="15" data-score="25" data-type="outerBull"></circle>
+          <text class="bull-label" x="100" y="100">25</text>
+
+          <!-- Inner bull -->
+          <circle class="bull bull-inner" cx="100" cy="100" r="7" data-score="50" data-type="bull"></circle>
+        </svg>
+      </div>
+
+      <p class="turn-total" id="turnTotalText">Turn total: 0 (Dart 1 of 3)</p>
+
       <div class="row">
+        <div>
+          <button class="primary" id="endTurnBtn">End Turn</button>
+        </div>
         <div>
           <button class="secondary" id="resetGameBtn">Reset Game</button>
         </div>
       </div>
 
-      <div class="players" id="playersContainer"></div>
+      <div class="scoreboard" id="scoreboard"></div>
 
-      <div id="randomShotArea" class="random-shot hidden">
-        <button class="secondary" id="generateShotBtn">Generate Random Shot</button>
+      <div id="randomShotArea" class="small-text hidden">
         <p id="randomShotText"></p>
       </div>
 
       <p class="footer-note">
-        Enter up to 3 dart scores per turn. Checkout suggestions are approximate.
+        Tap a multiplier, then tap a segment on the dartboard. 3 darts per turn.
       </p>
     </section>
   </main>
@@ -359,7 +450,11 @@
       sets: 1,
       finishOnDouble: true,
       aroundStart: 1,
-      aroundEnd: 20
+      aroundEnd: 20,
+      currentDart: 1,
+      turnTotal: 0,
+      currentMultiplier: "single",
+      randomTarget: null
     };
 
     // --- Elements ---
@@ -377,14 +472,20 @@
     const finishOnDoubleCheckbox = document.getElementById("finishOnDouble");
     const startGameBtn = document.getElementById("startGameBtn");
     const resetGameBtn = document.getElementById("resetGameBtn");
-    const playersContainer = document.getElementById("playersContainer");
     const gameSummary = document.getElementById("gameSummary");
+    const progressFill = document.getElementById("progressFill");
+    const playerNamesContainer = document.getElementById("playerNamesContainer");
+    const generateNamesBtn = document.getElementById("generateNamesBtn");
+    const turnInfo = document.getElementById("turnInfo");
+    const turnTotalText = document.getElementById("turnTotalText");
+    const scoreboard = document.getElementById("scoreboard");
     const randomShotArea = document.getElementById("randomShotArea");
-    const generateShotBtn = document.getElementById("generateShotBtn");
     const randomShotText = document.getElementById("randomShotText");
+    const endTurnBtn = document.getElementById("endTurnBtn");
     const aroundStartInput = document.getElementById("aroundStart");
     const aroundEndInput = document.getElementById("aroundEnd");
-    const progressFill = document.getElementById("progressFill");
+    const multiplierButtons = document.querySelectorAll(".multiplier-buttons button");
+    const segmentsGroup = document.getElementById("segmentsGroup");
 
     // --- Theme toggle ---
     themeToggle.addEventListener("click", () => {
@@ -431,6 +532,81 @@
     gameModeSelect.addEventListener("change", updateModeUI);
     updateModeUI();
 
+    // --- Player names UI ---
+    function renderPlayerNameInputs() {
+      const count = parseInt(playerCountInput.value, 10) || 1;
+      playerNamesContainer.innerHTML = "";
+      for (let i = 0; i < count; i++) {
+        const row = document.createElement("div");
+        row.className = "player-name-input";
+        const label = document.createElement("span");
+        label.textContent = `Player ${i + 1}`;
+        const input = document.createElement("input");
+        input.type = "text";
+        input.placeholder = `Name ${i + 1}`;
+        input.dataset.index = i;
+        row.appendChild(label);
+        row.appendChild(input);
+        playerNamesContainer.appendChild(row);
+      }
+    }
+
+    playerCountInput.addEventListener("change", renderPlayerNameInputs);
+    renderPlayerNameInputs();
+
+    generateNamesBtn.addEventListener("click", () => {
+      haptic();
+    });
+
+    // --- Dartboard segments (numbers 1–20 around circle) ---
+    function createSegments() {
+      const numbers = [20, 1, 18, 4, 13, 6, 10, 15, 2, 17,
+                       3, 19, 7, 16, 8, 11, 14, 9, 12, 5];
+      const centerX = 100;
+      const centerY = 100;
+      const radius = 80;
+
+      segmentsGroup.innerHTML = "";
+
+      numbers.forEach((num, index) => {
+        const angle = (index / numbers.length) * Math.PI * 2 - Math.PI / 2;
+        const x = centerX + radius * Math.cos(angle);
+        const y = centerY + radius * Math.sin(angle);
+
+        const hitRadius = 12;
+
+        const circle = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+        circle.setAttribute("cx", x);
+        circle.setAttribute("cy", y);
+        circle.setAttribute("r", hitRadius);
+        circle.setAttribute("class", "segment");
+        circle.dataset.score = num;
+        circle.dataset.type = "number";
+
+        const label = document.createElementNS("http://www.w3.org/2000/svg", "text");
+        label.setAttribute("x", x);
+        label.setAttribute("y", y);
+        label.setAttribute("class", "segment-label");
+        label.textContent = num;
+
+        circle.addEventListener("click", () => handleSegmentClick(num));
+        segmentsGroup.appendChild(circle);
+        segmentsGroup.appendChild(label);
+      });
+    }
+
+    createSegments();
+
+    // --- Multiplier selection ---
+    multiplierButtons.forEach(btn => {
+      btn.addEventListener("click", () => {
+        multiplierButtons.forEach(b => b.classList.remove("multiplier-active"));
+        btn.classList.add("multiplier-active");
+        state.currentMultiplier = btn.dataset.multiplier;
+        haptic();
+      });
+    });
+
     // --- Progress bar ---
     function updateProgress() {
       if (state.mode === "around") {
@@ -459,19 +635,25 @@
       state.aroundStart = parseInt(aroundStartInput.value, 10) || 1;
       state.aroundEnd = parseInt(aroundEndInput.value, 10) || 20;
 
+      const nameInputs = playerNamesContainer.querySelectorAll("input");
       state.players = [];
       for (let i = 0; i < playerCount; i++) {
+        const nameInput = Array.from(nameInputs).find(inp => parseInt(inp.dataset.index, 10) === i);
+        const name = (nameInput && nameInput.value.trim()) || `Player ${i + 1}`;
         state.players.push({
-          name: `Player ${i + 1}`,
+          name,
           score: state.mode === "standard" ? state.startingScore : 0,
           aroundCurrent: state.aroundStart,
           finished: false
         });
       }
       state.currentPlayerIndex = 0;
+      state.currentDart = 1;
+      state.turnTotal = 0;
 
       renderGameSummary();
-      renderPlayers();
+      renderScoreboard();
+      updateTurnInfo();
       setupCard.classList.add("hidden");
       gameCard.classList.remove("hidden");
       updateProgress();
@@ -482,26 +664,156 @@
         generateRandomShot();
       }
 
-      // Save basic setup to localStorage
       localStorage.setItem("dartsSetup", JSON.stringify({
         mode: state.mode,
         startingScore: state.startingScore,
         sets: state.sets,
         finishOnDouble: state.finishOnDouble,
-        playerCount
+        playerCount,
+        players: state.players
       }));
     });
 
     resetGameBtn.addEventListener("click", () => {
       setupCard.classList.remove("hidden");
       gameCard.classList.add("hidden");
-      playersContainer.innerHTML = "";
+      scoreboard.innerHTML = "";
       randomShotText.textContent = "";
       progressFill.style.width = "0%";
+      state.turnTotal = 0;
+      state.currentDart = 1;
+      turnTotalText.textContent = "Turn total: 0 (Dart 1 of 3)";
       haptic();
     });
 
-    // --- Rendering ---
+    // --- Turn info ---
+    function updateTurnInfo() {
+      const player = state.players[state.currentPlayerIndex];
+      turnInfo.textContent = `${player.name}'s turn — Dart ${state.currentDart} of 3`;
+      turnTotalText.textContent = `Turn total: ${state.turnTotal} (Dart ${state.currentDart} of 3)`;
+    }
+
+    // --- Segment click handler ---
+    function handleSegmentClick(number) {
+      const player = state.players[state.currentPlayerIndex];
+
+      if (state.mode === "around") {
+        const target = player.aroundCurrent;
+        if (number === target) {
+          player.aroundCurrent++;
+          state.turnTotal += number; // optional scoring
+          if (player.aroundCurrent > state.aroundEnd) {
+            player.finished = true;
+            alert(`${player.name} has completed Around the World!`);
+          }
+        } else {
+          // miss: no progress
+        }
+      } else {
+        let value = number;
+        if (state.currentMultiplier === "double") value = number * 2;
+        if (state.currentMultiplier === "treble") value = number * 3;
+
+        if (state.mode === "random" && state.randomTarget) {
+          const { num, mult } = state.randomTarget;
+          const requiredValue =
+            mult === "single" ? num :
+            mult === "double" ? num * 2 :
+            mult === "treble" ? num * 3 : num;
+          if (value !== requiredValue) {
+            // miss: no score
+            haptic();
+            state.currentDart = Math.min(3, state.currentDart + 1);
+            updateTurnInfo();
+            return;
+          }
+        }
+
+        state.turnTotal += value;
+      }
+
+      haptic();
+      state.currentDart = Math.min(3, state.currentDart + 1);
+      updateTurnInfo();
+    }
+
+    // --- Bull click handlers ---
+    document.querySelectorAll(".bull").forEach(bull => {
+      bull.addEventListener("click", () => {
+        const type = bull.dataset.type;
+        const score = parseInt(bull.dataset.score, 10);
+        const player = state.players[state.currentPlayerIndex];
+
+        if (state.mode === "around") {
+          // bull not used for around by default
+        } else {
+          let value = score;
+          if (state.mode === "random" && state.randomTarget) {
+            const { num, mult } = state.randomTarget;
+            const requiredValue =
+              mult === "bull" ? 50 :
+              mult === "outerBull" ? 25 : null;
+            if (requiredValue !== value) {
+              haptic();
+              state.currentDart = Math.min(3, state.currentDart + 1);
+              updateTurnInfo();
+              return;
+            }
+          }
+          state.turnTotal += value;
+        }
+
+        haptic();
+        state.currentDart = Math.min(3, state.currentDart + 1);
+        updateTurnInfo();
+      });
+    });
+
+    // --- End turn ---
+    endTurnBtn.addEventListener("click", () => {
+      const player = state.players[state.currentPlayerIndex];
+
+      if (state.mode === "standard") {
+        let newScore = player.score - state.turnTotal;
+
+        if (newScore < 0 || newScore === 1) {
+          newScore = player.score;
+        } else if (newScore === 0 && state.finishOnDouble) {
+          // simple check: assume last dart was double if turnTotal is even and <= 120
+          const isDoubleFinish = state.turnTotal % 2 === 0;
+          if (!isDoubleFinish) {
+            newScore = player.score;
+          }
+        }
+
+        player.score = newScore;
+        if (player.score === 0) {
+          alert(`${player.name} wins!`);
+        }
+      } else if (state.mode === "around") {
+        // progress already handled on hit
+      } else if (state.mode === "random") {
+        player.score += state.turnTotal;
+      }
+
+      state.turnTotal = 0;
+      state.currentDart = 1;
+      state.currentPlayerIndex =
+        (state.currentPlayerIndex + 1) % state.players.length;
+
+      renderScoreboard();
+      updateTurnInfo();
+      updateProgress();
+      haptic();
+
+      if (state.mode === "random") {
+        generateRandomShot();
+      }
+
+      localStorage.setItem("dartsPlayers", JSON.stringify(state.players));
+    });
+
+    // --- Game summary ---
     function renderGameSummary() {
       let text = "";
       if (state.mode === "standard") {
@@ -520,177 +832,47 @@
       gameSummary.textContent = text;
     }
 
-    function renderPlayers() {
-      playersContainer.innerHTML = "";
-      state.players.forEach((player, index) => {
-        const card = document.createElement("div");
-        card.className = "player-card";
-
-        const title = document.createElement("h3");
-        title.textContent =
-          player.name +
-          (index === state.currentPlayerIndex ? " (Turn)" : "");
-        card.appendChild(title);
-
-        const scoreLine = document.createElement("p");
+    // --- Scoreboard ---
+    function renderScoreboard() {
+      scoreboard.innerHTML = "";
+      state.players.forEach(p => {
+        const item = document.createElement("div");
+        item.className = "scoreboard-item";
         if (state.mode === "standard") {
-          scoreLine.textContent = `Score: ${player.score}`;
-        } else if (state.mode === "around") {
-          scoreLine.textContent = `Current Target: ${player.aroundCurrent}`;
+          item.textContent = `${p.name}: ${p.score}`;
         } else {
-          scoreLine.textContent = `Score: ${player.score}`;
+          item.textContent = `${p.name}: ${p.score}`;
         }
-        card.appendChild(scoreLine);
-
-        const checkout = document.createElement("p");
-        checkout.className = "checkout";
-        if (state.mode === "standard") {
-          checkout.textContent = getCheckoutSuggestion(player.score);
-        } else {
-          checkout.textContent = "";
-        }
-        card.appendChild(checkout);
-
-        const scoreInputs = document.createElement("div");
-        scoreInputs.className = "score-inputs";
-
-        const dart1 = document.createElement("input");
-        dart1.type = "number";
-        dart1.placeholder = "D1";
-
-        const dart2 = document.createElement("input");
-        dart2.type = "number";
-        dart2.placeholder = "D2";
-
-        const dart3 = document.createElement("input");
-        dart3.type = "number";
-        dart3.placeholder = "D3";
-
-        scoreInputs.appendChild(dart1);
-        scoreInputs.appendChild(dart2);
-        scoreInputs.appendChild(dart3);
-
-        const applyBtn = document.createElement("button");
-        applyBtn.textContent = "Apply Turn";
-        applyBtn.className = "primary";
-
-        applyBtn.addEventListener("click", () => {
-          const scores = [
-            parseInt(dart1.value, 10) || 0,
-            parseInt(dart2.value, 10) || 0,
-            parseInt(dart3.value, 10) || 0
-          ];
-          handleTurn(index, scores);
-          dart1.value = "";
-          dart2.value = "";
-          dart3.value = "";
-          haptic();
-        });
-
-        card.appendChild(scoreInputs);
-        card.appendChild(applyBtn);
-
-        playersContainer.appendChild(card);
+        scoreboard.appendChild(item);
       });
-
-      updateProgress();
-    }
-
-    // --- Turn logic ---
-    function handleTurn(playerIndex, dartScores) {
-      const player = state.players[playerIndex];
-
-      if (state.mode === "standard") {
-        const total = dartScores.reduce((a, b) => a + b, 0);
-        let newScore = player.score - total;
-
-        if (newScore < 0 || newScore === 1) {
-          newScore = player.score;
-        } else if (newScore === 0 && state.finishOnDouble) {
-          const last = dartScores[dartScores.length - 1];
-          const isDouble =
-            (last % 2 === 0 && last <= 40) || last === 50 || last === 25;
-          if (!isDouble) {
-            newScore = player.score;
-          }
-        }
-
-        player.score = newScore;
-        if (player.score === 0) {
-          alert(`${player.name} wins!`);
-        }
-      } else if (state.mode === "around") {
-        const target = player.aroundCurrent;
-        if (dartScores.includes(target)) {
-          if (target < state.aroundEnd) {
-            player.aroundCurrent++;
-          } else {
-            player.finished = true;
-            alert(`${player.name} has completed Around the World!`);
-          }
-        }
-      } else if (state.mode === "random") {
-        const total = dartScores.reduce((a, b) => a + b, 0);
-        player.score += total;
-      }
-
-      state.currentPlayerIndex =
-        (state.currentPlayerIndex + 1) % state.players.length;
-
-      renderPlayers();
-
-      if (state.mode === "random") {
-        generateRandomShot();
-      }
-
-      // Save scores to localStorage
-      localStorage.setItem("dartsPlayers", JSON.stringify(state.players));
-    }
-
-    // --- Checkout suggestion (simple) ---
-    function getCheckoutSuggestion(score) {
-      if (score > 170 || score < 2) return "";
-      if (score === 170) return "T20, T20, Bull";
-      if (score === 167) return "T20, T19, Bull";
-      if (score === 164) return "T20, T18, Bull";
-      if (score === 161) return "T20, T17, Bull";
-      if (score === 160) return "T20, T20, D20";
-      if (score === 158) return "T20, T20, D19";
-      if (score === 157) return "T20, T19, D19";
-      if (score === 156) return "T20, T20, D18";
-      if (score === 155) return "T20, T19, D19";
-      if (score === 154) return "T20, T18, D20";
-      if (score === 153) return "T20, T19, D18";
-      if (score === 152) return "T20, T20, D16";
-      if (score === 151) return "T20, T17, D20";
-      if (score === 150) return "T20, T18, D18";
-      if (score <= 100) {
-        return `Try T20 then set up a double (e.g. D${score - 40}).`;
-      }
-      return "";
     }
 
     // --- Random shot selector ---
     function generateRandomShot() {
-      const segments = [];
-      for (let i = 1; i <= 20; i++) segments.push(i);
-      segments.push("Bull");
-      segments.push("Outer Bull");
+      const numbers = [20, 1, 18, 4, 13, 6, 10, 15, 2, 17,
+                       3, 19, 7, 16, 8, 11, 14, 9, 12, 5];
+      const multipliers = ["single", "double", "treble"];
+      const special = ["bull", "outerBull"];
 
-      const multipliers = ["Single", "Double", "Triple"];
+      let choice;
+      if (Math.random() < 0.2) {
+        const s = special[Math.floor(Math.random() * special.length)];
+        choice = { num: s === "bull" ? 50 : 25, mult: s };
+      } else {
+        const num = numbers[Math.floor(Math.random() * numbers.length)];
+        const mult = multipliers[Math.floor(Math.random() * multipliers.length)];
+        choice = { num, mult };
+      }
 
-      const segment =
-        segments[Math.floor(Math.random() * segments.length)];
-      const multiplier =
-        multipliers[Math.floor(Math.random() * multipliers.length)];
+      state.randomTarget = choice;
 
-      randomShotText.textContent = `Target: ${multiplier} ${segment}`;
+      let text;
+      if (choice.mult === "bull") text = "Hit: Bull (50)";
+      else if (choice.mult === "outerBull") text = "Hit: Outer Bull (25)";
+      else text = `Hit: ${choice.mult.charAt(0).toUpperCase() + choice.mult.slice(1)} ${choice.num}`;
+
+      randomShotText.textContent = text;
     }
-
-    generateShotBtn.addEventListener("click", () => {
-      generateRandomShot();
-      haptic();
-    });
 
     // --- Restore basic state if available ---
     (function restoreFromStorage() {
@@ -707,6 +889,8 @@
       state.finishOnDouble = s.finishOnDouble;
       state.players = p;
       state.currentPlayerIndex = 0;
+      state.currentDart = 1;
+      state.turnTotal = 0;
 
       gameModeSelect.value = state.mode;
       startingScoreSelect.value = String(state.startingScore);
@@ -717,7 +901,14 @@
       setupCard.classList.add("hidden");
       gameCard.classList.remove("hidden");
       renderGameSummary();
-      renderPlayers();
+      renderScoreboard();
+      updateTurnInfo();
+      updateProgress();
+
+      if (state.mode === "random") {
+        randomShotArea.classList.remove("hidden");
+        generateRandomShot();
+      }
     })();
   </script>
 </body>
