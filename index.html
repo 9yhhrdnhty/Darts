@@ -176,6 +176,8 @@
       </div>
     </div>
 
+    <button class="secondary" id="generateNamesBtn">Generate Player Name Boxes</button>
+
     <div class="card">
       <h3>Player Names</h3>
       <div id="playerNames"></div>
@@ -228,8 +230,7 @@ const state = {
   currentPlayer: 0,
   turnTotal: 0,
   lastDarts: [],
-  randomTarget: null,
-  completedTargets: []
+  randomTarget: null
 };
 
 const setupCard = document.getElementById("setupCard");
@@ -242,9 +243,7 @@ const randomInstruction = document.getElementById("randomInstruction");
 const ringsGroup = document.getElementById("ringsGroup");
 const limitWarning = document.getElementById("limitWarning");
 
-document.getElementById("playerCount").addEventListener("change", renderNameInputs);
-
-function renderNameInputs() {
+document.getElementById("generateNamesBtn").addEventListener("click", () => {
   const count = parseInt(document.getElementById("playerCount").value);
   playerNamesDiv.innerHTML = "";
   for (let i = 0; i < count; i++) {
@@ -254,8 +253,8 @@ function renderNameInputs() {
     input.dataset.index = i;
     playerNamesDiv.appendChild(input);
   }
-}
-renderNameInputs();
+  haptic();
+});
 
 document.getElementById("startGameBtn").addEventListener("click", startGame);
 
@@ -463,3 +462,12 @@ function hitBull(score,type) {
   if (state.mode==="random") {
     const t = state.randomTarget;
     const required = t.mult==="bull"?50:25;
+
+    if (score !== required) {
+      haptic();
+      return;
+    }
+
+    state.players[state.currentPlayer].completed.push(type);
+    checkWinner();
+    generateRandom
